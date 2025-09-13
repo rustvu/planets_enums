@@ -1,112 +1,63 @@
 #[derive(Debug, Clone)]
-struct Planet {
-    name: String,
-    radius: f64, // meters
-    mass: f64,   // kg
+enum CelestialBody {
+    // Unit variant: no data
+    BlackHole,
+    // Tuple variant: unnamed fields
+    Asteroid(f64, f64), // diameter (m), mass (kg)
+    // Struct variant: named fields
+    Planet {
+        name: String,
+        radius: f64,
+        mass: f64,
+    },
 }
 
-impl Planet {
-    fn new(name: &str, radius: f64, mass: f64) -> Self {
-        Self {
-            name: name.to_string(),
-            radius,
-            mass,
-        }
-    }
+impl CelestialBody {
+    // Associated constant
+    const G: f64 = 6.67e-11;
 
-    fn surface_gravity(&self) -> f64 {
-        6.67e-11 * self.mass / (self.radius * self.radius)
-    }
-
-    fn ring_diameter(&self) -> Option<f64> {
-        if self.name == "Saturn" {
-            Some(2.0 * self.radius)
-        } else {
-            None
-        }
-    }
-
-    fn shrink(&mut self, scale: f64) {
-        self.radius *= scale;
-    }
-
-    fn annihilate(self) {
-        println!("Good bye, {}!", self.name);
-    }
-}
-
-enum Body {
-    Planet(Planet),
-    Star,
-    Comet { name: String, period: f64 },
-}
-
-impl Body {
-    fn name(&self) -> &str {
+    // Method to compute surface gravity (if applicable)
+    fn surface_gravity(&self) -> Option<f64> {
         match self {
-            Body::Planet(p) => &p.name,
-            Body::Star => "Star",
-            Body::Comet { name, .. } => name,
+            CelestialBody::Planet { radius, mass, .. } => Some(Self::G * mass / (radius * radius)),
+            CelestialBody::Asteroid(diameter, mass) => {
+                let radius = diameter / 2.0;
+                Some(Self::G * mass / (radius * radius))
+            }
+            CelestialBody::BlackHole => None, // Not defined for black holes here
         }
     }
-}
 
-enum PlanetList {
-    Cons(Planet, Box<PlanetList>),
-    Nil,
-}
-
-impl PlanetList {
-    fn new() -> Self {
-        PlanetList::Nil
-    }
-
-    fn prepend(self, planet: Planet) -> Self {
-        PlanetList::Cons(planet, Box::new(self))
-    }
-
-    fn len(&self) -> usize {
+    // Method to display a greeting
+    fn greet(&self) {
         match self {
-            PlanetList::Cons(_, tail) => 1 + tail.len(),
-            PlanetList::Nil => 0,
+            CelestialBody::Planet { name, .. } => println!("Hello, planet {name}!"),
+            CelestialBody::Asteroid(_, _) => println!("Watch out for that asteroid!"),
+            CelestialBody::BlackHole => println!("Don't get too close to the black hole!"),
         }
     }
 }
 
 fn main() {
-    let earth = Planet::new("Earth", 6.378e6, 5.972e24);
-
-    let mut gaia = earth.clone();
-    gaia.shrink(0.5);
-    println!("{:?}", gaia);
-    gaia.annihilate();
-
-    println!("{:?}, surface gravity: {}", earth, earth.surface_gravity());
-
-    //
-    let saturn = Planet::new("Saturn", 6.378e6, 5.972e24);
-    println!("Earth's ring diameter: {:?}", earth.ring_diameter());
-    println!("Saturn's ring diameter: {:?}", saturn.ring_diameter());
-
-    //
-    let sun = Body::Star;
-    let comet = Body::Comet {
-        name: "Halley".to_string(),
-        period: 76.0,
+    let earth = CelestialBody::Planet {
+        name: "Earth".to_string(),
+        radius: 6.378e6,
+        mass: 5.972e24,
     };
-    let planet = Body::Planet(Planet::new("Earth", 6.378e6, 5.972e24));
-    println!(
-        "sun: {}, comet: {}, planet: {}",
-        sun.name(),
-        comet.name(),
-        planet.name()
-    );
+    let ceres = CelestialBody::Asteroid(9.46e5, 9.393e20);
+    let singularity = CelestialBody::BlackHole;
 
-    //
-    let mut planets = PlanetList::new();
-    planets = planets.prepend(Planet::new("Mercury", 2.439e6, 3.301e23));
-    planets = planets.prepend(Planet::new("Venus", 6.052e6, 4.867e24));
-    planets = planets.prepend(Planet::new("Earth", 6.378e6, 5.972e24));
-    planets = planets.prepend(Planet::new("Mars", 3.393e6, 6.417e23));
-    println!("number of planets: {}", planets.len());
+    for body in [&earth, &ceres, &singularity] {
+        println!("{:?}", body);
+        body.greet();
+        match body.surface_gravity() {
+            Some(g) => println!("Surface gravity: {g}"),
+            None => println!("Surface gravity: undefined"),
+        }
+        println!();
+    }
+
+    if let CelestialBody::Planet { name, radius, .. } = earth {
+        println!("{} has a diameter of {} meters", name, 2.0 * radius);
+    }
 }
